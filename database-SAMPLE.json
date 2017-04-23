@@ -1,0 +1,23 @@
+{
+  "keys": [
+    {
+      "username": "dmliao",
+      "wsse-key": "b9692239f8d1c001c352f60a7b16c7cc95e06e5fa64874cf5e8788e30749ef9b",
+      "service": "webqueue"
+    },
+    {
+      "username": "dmliao",
+      "service": "generic",
+      "wsse-key": "7bd785ebd429f81c69bb255d29a10bd48ec5a2c134782b77b8aff892e0620690"
+    },
+    {
+      "username": "testuser",
+      "service": "api",
+      "wsse-key": "test"
+    }
+  ],
+  "tigerbook": {
+    "username": "USERNAME",
+    "wsse-key": "WSSE-KEY"
+  }
+}
