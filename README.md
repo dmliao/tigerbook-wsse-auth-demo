@@ -53,4 +53,11 @@ The server has the following routes (all found in `server.js`:
 
 ## Notes
 
-* The WSSE verifier in `auth.js` is incomplete - there should be some check to make sure nonces are not reused.
+The WSSE verifier in `auth.js` is incomplete - there should be some check to make sure nonces are not reused.
+
+This app calls Tigerbook with a single application key for all users - which is not entirely ideal. In the ideal situation, the application would be able to procure an agent key for the user on their behalf, and use that key for their queries. However, we cannot do that for the following reasons:
+
+1. We cannot consume API endpoints on the client, because that violates AJAX's cross-domain protections.
+2. As a result, we use a proxy on the server to fetch Tigerbook requests. However, proxying through CAS to retrieve API keys becomes an issue.
+
+2 can be solved by understanding and implementing CAS proxying. However, this requires a server specifically to handle the proxy tickets, which I'm not sure Princeton has.
