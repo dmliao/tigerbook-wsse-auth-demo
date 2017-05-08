@@ -4,11 +4,12 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 
+const request = require('superagent');
+
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const cons = require('consolidate');
 const auth = require('./auth');
-const request = require('request');
 const _ = require('lodash');
 
 const crypto = require('crypto');
@@ -50,44 +51,10 @@ app.route('/me')
         });
     });
 
-app.route("/photo/:netid")
+app.route("/protected")
     .get(auth.isAuthenticated(), function(req, res) {
 
-        var endpoint = 'https://tigerbook.herokuapp.com/api/v1/undergraduates/' + req.params.netid;
-        console.log(endpoint);
-
-        var username = database.tigerbook.username;
-        var password = database.tigerbook['wsse-key'];
-
-        var token = wsse({
-            username: username,
-            password: password
-        });
-
-        var wsseString = token.getWSSEHeader({
-            nonseBase64: true
-        });
-
-        var options = {
-            url: endpoint,
-            headers: {
-                'Authorization': 'WSSE profile="UsernameToken"',
-                'X-WSSE': wsseString
-            },
-            method: 'GET'
-        };
-
-        request(options).pipe(res);
-
-        var callback = function(error, response, body) {
-            if (error) {
-                console.log(error);
-                res.status(400, error);
-            }
-            if (!error) {
-                res.send(body);
-            }
-        }
+        res.send("WSSE Authentication Successful.");
     });
 
 app.route('/')
@@ -107,6 +74,21 @@ app.route('/login')
     });
 app.route('/logout')
     .get(auth.casLogout());
+
+// PROXY FOR TIGERBOOK
+
+app.route('/tigerbook/getKey')
+    .get(function(req, res, next) {
+        console.log("Retrieving key");
+        request.get('https://tigerbook.herokuapp.com/api/v1/getkey').pipe(res);
+    })
+
+app.route('/tigerbook/undergraduates/:netid')
+    .get(function(req, res, next) {
+        request.get('https://tigerbook.herokuapp.com/api/v1/undergraduates/' + req.params.netid)
+            .set(req.headers)
+            .pipe(res);
+    })
 
 function generateWSSEKeyForService(username, service) {
 
@@ -132,6 +114,8 @@ function generateWSSEKeyForService(username, service) {
     key['wsse-key'] = password;
 
     fs.writeFileSync("database.json", JSON.stringify(database, null, 2));
+
+    console.log("Writing to database");
 
     return password;
 
