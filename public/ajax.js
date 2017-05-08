@@ -103,11 +103,9 @@ function authenticate(route, method, data) {
 function getTigerbook(netid, method, data) {
     method = method || 'GET';
 
-    var route = '/tigerbook/undergraduates/' + netid;
-    var getKeyURL = '/tigerbook/getKey';
-    var cookie = 'tigerbook-wsse';
+    var route = '/tigerbook/' + netid;
 
-    return authenticateInternal(route, getKeyURL, cookie, method, data);
+    return authenticate(route, method, data);
 
 }
 

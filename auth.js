@@ -1,4 +1,4 @@
-var CASAuthentication = require('cas-authentication');
+// var CASAuthentication = require('cas-authentication');
 var inspect = require('util').inspect;
 var _ = require('lodash');
 var wsse = require('./vendor/wsse');
@@ -12,20 +12,6 @@ var getProp = function(obj, name) {
     });
     return obj[realName];
 };
-
-var cas = new CASAuthentication({
-    // cas_url: 'https://fed.princeton.edu/cas',
-    cas_url: 'https://cast.cs.princeton.edu/cas',
-    service_url: 'http://localhost:3000',
-    cas_version: '2.0',
-    renew: false,
-    is_dev_mode: false,
-    dev_mode_user: '',
-    dev_mode_info: {},
-    session_name: 'cas_user',
-    session_info: 'cas_userinfo',
-    destroy_session: false
-});
 
 function verifyWSSERequest(req) {
     var header = getProp(req.headers, "X-WSSE");
@@ -47,7 +33,6 @@ exports.isAuthenticated = function(options) {
             var verify = verifyWSSERequest(req);
 
             if (!verify) {
-                // return cas.block(req, res, next);
                 return res.status(401).json({
                     error: "Unauthorized"
                 });
@@ -95,9 +80,7 @@ exports.isAuthenticated = function(options) {
                 nonce: nonce
             });
 
-            console.log(token.getWSSEHeader({
-                nonceBase64: true
-            }));
+            console.log(password);
             console.log(wsseString);
 
             if (digest === token.getPasswordDigest()) {
@@ -120,16 +103,41 @@ exports.isAuthenticated = function(options) {
     }
 }
 
-exports.casRedirect = function() {
-    return cas.bounce;
+exports.casRedirect = function(options) {
+    if (typeof options == 'string') {
+        options = {
+            redirectTo: options
+        }
+    }
+    options = options || {};
+
+    var url = options.redirectTo || '/login';
+    var setReturnTo = (options.setReturnTo === undefined) ? true : options.setReturnTo;
+
+    return function(req, res, next) {
+        console.log(req.isAuthenticated());
+        if (!req.isAuthenticated || !req.isAuthenticated()) {
+            if (setReturnTo && req.session) {
+                req.session.returnTo = req.originalUrl || req.url;
+            }
+            return res.redirect(url);
+        }
+        next();
+    }
 }
 
 exports.casBlock = function() {
-    return cas.block;
+    return function(req, res, next) {
+        if (!req.isAuthenticated || !req.isAuthenticated()) {
+            return res.status(401).send("Unauthorized");
+        }
+        next();
+    }
 }
 
 exports.casLogout = function() {
-    return cas.logout;
+    return function(req, res, next) {
+        var returnURL = '/';
+        cas.logout(req, res, returnURL);
+    }
 }
-
-exports.session_name = cas.session_name;

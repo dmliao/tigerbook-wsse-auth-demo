@@ -6,6 +6,8 @@ const app = express();
 
 const request = require('superagent');
 
+const logger = require('morgan');
+
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const cons = require('consolidate');
@@ -18,6 +20,8 @@ const url = require('url');
 const wsse = require('./vendor/wsse');
 
 const database = require('./database.json');
+
+app.use(logger('dev'));
 
 // uggghhhh
 app.use(express.static(path.join(__dirname, 'public')));
@@ -44,11 +48,42 @@ app.engine('html', cons.nunjucks);
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'views'));
 
+// SET UP PASSPORT FOR AUTH
+
+var passport = require('passport');
+var CasStrategy = require('passport-cas2').Strategy;
+
+var cas = new CasStrategy({
+    casURL: 'https://fed.princeton.edu/cas'
+}, function(username, profile, done) {
+    done(null, {
+        username: username
+    });
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(cas);
+
+passport.serializeUser(function(user, done) {
+    done(null, user);
+});
+
+passport.deserializeUser(function(user, done) {
+    done(null, user);
+});
+
+app.get('/login', function(req, res, next) {
+    passport.authenticate('cas', {
+        successReturnToOrRedirect: '/'
+    })(req, res, next);
+});
+
+// ROUTES
+
 app.route('/me')
     .get(auth.casBlock(), function(req, res) {
-        res.json({
-            username: req.session[auth.session_name]
-        });
+        res.json(req.user);
     });
 
 app.route("/protected")
@@ -62,33 +97,36 @@ app.route('/')
         res.sendFile(path.join(__dirname, '/index.html'));
     });
 
-app.route('/login')
-    .get(auth.casRedirect(), function(req, res) {
-        if (req.session.return) {
-            res.redirect(req.session.return);
-        }
-        else {
-            res.redirect('/');
-        }
-
-    });
 app.route('/logout')
     .get(auth.casLogout());
 
 // PROXY FOR TIGERBOOK
+app.route('/tigerbook/:netid')
+    .get(auth.isAuthenticated(), function(req, res) {
 
-app.route('/tigerbook/getKey')
-    .get(function(req, res, next) {
-        console.log("Retrieving key");
-        request.get('https://tigerbook.herokuapp.com/api/v1/getkey').pipe(res);
-    })
+        var endpoint = 'https://tigerbook.herokuapp.com/api/v1/undergraduates/' + req.params.netid;
 
-app.route('/tigerbook/undergraduates/:netid')
-    .get(function(req, res, next) {
-        request.get('https://tigerbook.herokuapp.com/api/v1/undergraduates/' + req.params.netid)
-            .set(req.headers)
+        var username = database.tigerbook.username;
+        var password = database.tigerbook['wsse-key'];
+
+        var token = wsse({
+            username: username,
+            password: password
+        });
+
+        var wsseString = token.getWSSEHeader({
+            nonseBase64: true
+        });
+
+        var headers = {
+            'Authorization': 'WSSE profile="UsernameToken"',
+            'X-WSSE': wsseString
+        };
+
+        request.get(endpoint)
+            .set(headers)
             .pipe(res);
-    })
+    });
 
 function generateWSSEKeyForService(username, service) {
 
@@ -109,10 +147,8 @@ function generateWSSEKeyForService(username, service) {
 
     var password = crypto.randomBytes(32).toString('hex');
 
-    // pull this from the database or something.
-    // TODO: how do we protect these keys?
+    // hack to save the key to the 'database'
     key['wsse-key'] = password;
-
     fs.writeFileSync("database.json", JSON.stringify(database, null, 2));
 
     console.log("Writing to database");
@@ -123,7 +159,7 @@ function generateWSSEKeyForService(username, service) {
 app.route('/wsse')
     .get(auth.casRedirect(), function(req, res) {
 
-        var username = req.session[auth.session_name];
+        var username = req.user.username;
         var service = 'generic';
 
         console.log(service);
@@ -136,7 +172,7 @@ app.route('/wsse')
 app.route('/wsse/:service')
     .get(auth.casRedirect(), function(req, res) {
 
-        var username = req.session[auth.session_name];
+        var username = req.user.username;
         var service = req.params.service;
 
         console.log(service);

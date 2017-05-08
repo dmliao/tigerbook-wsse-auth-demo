@@ -11,15 +11,17 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.17.1",
-    "cas-authentication": "0.0.8",
     "consolidate": "^0.14.5",
     "cookies-js": "^1.2.3",
     "express": "^4.15.2",
     "express-session": "^1.15.2",
     "jquery": "^3.2.1",
     "lodash": "^4.17.4",
+    "morgan": "^1.8.1",
     "nunjucks": "^3.0.0",
-    "request": "^2.81.0"
+    "passport": "^0.3.2",
+    "passport-cas2": "0.0.8",
+    "superagent": "^3.5.2"
   },
   "devDependencies": {
     "browserify": "^14.3.0"

@@ -2,6 +2,7 @@ var wsse = require('../vendor/wsse');
 var ajax = require('./ajax');
 
 function updateImage(tigerbookData) {
+    console.log(tigerbookData);
     var jsonResult = JSON.parse(tigerbookData);
     var img = $('<img />', {
         id: 'tigerbook-image',
@@ -39,8 +40,11 @@ function getProtectedEndpoint() {
     })
 }
 
+$("#protected").click(function() {
+    getProtectedEndpoint();
+})
+
 $("#submit").click(function() {
     console.log("Clicked")
-    getProtectedEndpoint();
     onClick($('#netid').val());
 });
